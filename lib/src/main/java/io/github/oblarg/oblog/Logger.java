@@ -833,7 +833,7 @@ public class Logger {
         for (Annotation annotation : field.getAnnotationsByType(type)) {
           // Exclude all plain Config annotations that have methodName defined
           if (annotation instanceof Config) {
-            if (((Config) annotation).methodName() != "DEFAULT") {
+            if (!((Config) annotation).methodName().equals("DEFAULT")) {
               continue;
             }
           }
@@ -959,7 +959,7 @@ public class Logger {
   );
 
   private static Method getMethod(Field field, String methodName, Class<?>[] methodTypes) {
-    if (methodName != "DEFAULT") {
+    if (!methodName.equals("DEFAULT")) {
       try {
         return field.getType().getDeclaredMethod(methodName, methodTypes);
       } catch (Exception e) {
