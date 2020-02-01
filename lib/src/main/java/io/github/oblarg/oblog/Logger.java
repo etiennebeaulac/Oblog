@@ -287,7 +287,7 @@ public class Logger {
   @FunctionalInterface
   private interface SetterProcessor {
     void processSetter(Consumer<Object> setter, Annotation params, ShuffleboardContainerWrapper bin,
-                       NetworkTableInstance nt, String name, boolean isBoolean);
+                       NetworkTableInstance nt, String name, boolean isBoolean, Object defaultValue);
   }
 
   /**
@@ -297,9 +297,10 @@ public class Logger {
    */
   private static final Map<Class<? extends Annotation>, SetterProcessor> configSetterHandler =
       Map.ofEntries(
-          entry(Config.class, (setter, rawParams, bin, nt, name, isBoolean) -> {
+          entry(Config.class, (setter, rawParams, bin, nt, name, isBoolean, defaultValue) -> {
             if (isBoolean) {
               Config params = (Config) rawParams;
+              defaultValue = (defaultValue == null ? params.defaultValueBoolean() : defaultValue);
               bin = params.tabName().equals("DEFAULT") ? bin :
                   new WrappedShuffleboardContainer(Shuffleboard.getTab(params.tabName()));
               NetworkTableEntry entry =
@@ -317,6 +318,7 @@ public class Logger {
               setter.accept(params.defaultValueBoolean());
             } else {
               Config params = (Config) rawParams;
+              defaultValue = (defaultValue == null ? params.defaultValueNumeric() : defaultValue);
               bin = params.tabName().equals("DEFAULT") ? bin :
                   new WrappedShuffleboardContainer(Shuffleboard.getTab(params.tabName()));
               NetworkTableEntry entry =
@@ -334,8 +336,9 @@ public class Logger {
               setter.accept(params.defaultValueNumeric());
             }
           }),
-          entry(Config.ToggleButton.class, (setter, rawParams, bin, nt, name, isBoolean) -> {
+          entry(Config.ToggleButton.class, (setter, rawParams, bin, nt, name, isBoolean, defaultValue) -> {
             Config.ToggleButton params = (Config.ToggleButton) rawParams;
+            defaultValue = (defaultValue == null ? params.defaultValue() : defaultValue);
             bin = params.tabName().equals("DEFAULT") ? bin :
                 new WrappedShuffleboardContainer(Shuffleboard.getTab(params.tabName()));
             NetworkTableEntry entry =
@@ -352,8 +355,9 @@ public class Logger {
             );
             setter.accept(params.defaultValue());
           }),
-          entry(Config.ToggleSwitch.class, (setter, rawParams, bin, nt, name, isBoolean) -> {
+          entry(Config.ToggleSwitch.class, (setter, rawParams, bin, nt, name, isBoolean, defaultValue) -> {
             Config.ToggleSwitch params = (Config.ToggleSwitch) rawParams;
+            defaultValue = (defaultValue == null ? params.defaultValue() : defaultValue);
             bin = params.tabName().equals("DEFAULT") ? bin :
                 new WrappedShuffleboardContainer(Shuffleboard.getTab(params.tabName()));
             NetworkTableEntry entry =
@@ -370,8 +374,9 @@ public class Logger {
             );
             setter.accept(params.defaultValue());
           }),
-          entry(Config.NumberSlider.class, (setter, rawParams, bin, nt, name, isBoolean) -> {
+          entry(Config.NumberSlider.class, (setter, rawParams, bin, nt, name, isBoolean, defaultValue) -> {
             Config.NumberSlider params = (Config.NumberSlider) rawParams;
+            defaultValue = (defaultValue == null ? params.defaultValue() : defaultValue);
             bin = params.tabName().equals("DEFAULT") ? bin :
                 new WrappedShuffleboardContainer(Shuffleboard.getTab(params.tabName()));
             NetworkTableEntry entry =
@@ -819,16 +824,23 @@ public class Logger {
       }
       field.setAccessible(true);
       registeredFields.add(field);
-      // Look for all setter config annotation types (should have methodName set)
-      for (Class type : configSetterHandler.keySet()) {
+      boolean isPrimitive = field.getType().isPrimitive();
+      // Look for all setter config annotation types (should have methodName set or be
+      // a primitive)
+      for (Class<? extends Annotation> type : configSetterHandler.keySet()) {
         // Get all annotations of each type
         for (Annotation annotation : field.getAnnotationsByType(type)) {
           // Handle the setter
+          if (isPrimitive) { // primitive type
+            handlePrimitiveFieldConfigAnnotation(loggable, bin, nt, field, annotation);
+          } else { // Object : handle the setter (should have methodName set)
           handleMethodNameAnnotation(loggable, bin, nt, field, annotation);
         }
       }
+      }
       // Look for all Sendable config annotation types
-      for (Class type : configFieldHandler.keySet()) {
+      if (Sendable.class.isAssignableFrom(field.getType())) {
+        for (Class<? extends Annotation> type : configFieldHandler.keySet()) {
         // Get all annotations of each type
         for (Annotation annotation : field.getAnnotationsByType(type)) {
           // Exclude all plain Config annotations that have methodName defined
@@ -851,10 +863,12 @@ public class Logger {
                 },
                 annotation,
                 bin,
-                field.getName());
+                  field.getName()
+                );
           }
         }
       }
+    }
     }
 
     // Process methods...
@@ -880,6 +894,32 @@ public class Logger {
         registeredMethods.add(method);
         // Multi-arg setters only use the default Config annotation
         handleMultiArgSetter(loggable, bin, nt, method, method.getAnnotationsByType(Config.class));
+      }
+    }
+  }
+
+  private static void handlePrimitiveFieldConfigAnnotation(Object loggable, ShuffleboardContainerWrapper bin,
+      NetworkTableInstance nt, Field field, Annotation... annotations) {
+    for (Annotation annotation : annotations) {
+      // Get correct processing method for the given type
+      SetterProcessor process = configSetterHandler.get(annotation.annotationType());
+      Class<?> type = field.getType();
+      if (process != null) {
+        Object defaultValue = null;
+        try {
+          defaultValue = field.get(loggable);
+        } catch (IllegalArgumentException | IllegalAccessException e) {
+          e.printStackTrace();
+        }
+        // Process the setter
+        process.processSetter(
+            (value) -> {
+              try {
+                field.set(loggable, setterCaster.get(type).apply(value));
+              } catch (IllegalArgumentException | IllegalAccessException e) {
+                e.printStackTrace();
+              }
+            }, annotation, bin, nt, field.getName(), type.equals(Boolean.TYPE) || type.equals(boolean.class), defaultValue);
       }
     }
   }
@@ -996,7 +1036,8 @@ public class Logger {
             nt,
             method.getName(),
             method.getParameterTypes()[0].equals(Boolean.TYPE) || method.getParameterTypes()[0]
-                .equals(Boolean.class));
+                .equals(Boolean.class),
+            null);
       }
     }
   }
@@ -1054,7 +1095,7 @@ public class Logger {
               nt,
               parameter.getName(),
               parameter.getType().equals(Boolean.TYPE) || parameter.getType()
-                                                                   .equals(Boolean.class));
+                                                                   .equals(Boolean.class), null);
         }
       }
     }
