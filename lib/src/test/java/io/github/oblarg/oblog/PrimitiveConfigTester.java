@@ -22,6 +22,7 @@ public class PrimitiveConfigTester {
     Logger.configureLoggingTest(Logger.LogType.CONFIG, rootContainer, mocks.getMockedShuffleboard(), mocks.getMockedNTInstance());
 
     verify(mocks.getMockedShuffleboard()).getTab("TestConfigPrimitiveInteger: Config");
+    Logger.updateEntries();
     verify(mocks.getMockedContainer()).add("i", 4);
     
     verify(mocks.getMockedNTInstance()).addEntryListener(any(NetworkTableEntry.class), any(), eq(EntryListenerFlags.kUpdate));
@@ -51,6 +52,7 @@ public class PrimitiveConfigTester {
     Logger.configureLoggingTest(Logger.LogType.CONFIG, rootContainer, mocks.getMockedShuffleboard(), mocks.getMockedNTInstance());
 
     verify(mocks.getMockedShuffleboard()).getTab("TestConfigPrimitiveDouble: Config");
+    Logger.updateEntries();
     verify(mocks.getMockedContainer()).add("j", 3.14d);
     
     verify(mocks.getMockedNTInstance()).addEntryListener(any(NetworkTableEntry.class), any(), eq(EntryListenerFlags.kUpdate));
@@ -80,6 +82,7 @@ public class PrimitiveConfigTester {
     Logger.configureLoggingTest(Logger.LogType.CONFIG, rootContainer, mocks.getMockedShuffleboard(), mocks.getMockedNTInstance());
 
     verify(mocks.getMockedShuffleboard()).getTab("TestConfigPrimitiveBoolean: Config");
+    Logger.updateEntries();
     verify(mocks.getMockedContainer()).add("isToggled", true);
     
     verify(mocks.getMockedNTInstance()).addEntryListener(any(NetworkTableEntry.class), any(), eq(EntryListenerFlags.kUpdate));

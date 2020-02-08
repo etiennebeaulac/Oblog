@@ -580,6 +580,7 @@ public @interface Config {
   @Retention(RetentionPolicy.RUNTIME)
   @Target({ElementType.FIELD, ElementType.TYPE})
   @interface Exclude {
+    boolean exclude() default true;
   }
 
   /**
@@ -588,5 +589,6 @@ public @interface Config {
   @Retention(RetentionPolicy.RUNTIME)
   @Target({ElementType.FIELD})
   @interface Include {
+    boolean include() default true;
   }
 }

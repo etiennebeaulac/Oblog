@@ -323,7 +323,7 @@ public class Logger {
                   new WrappedShuffleboardContainer(Shuffleboard.getTab(params.tabName()));
               NetworkTableEntry entry =
                   bin.add((params.name().equals("NO_NAME")) ? name : params.name(),
-                          params.defaultValueNumeric())
+                          defaultValue)
                      .withWidget(BuiltInWidgets.kTextView.getWidgetName())
                      .withPosition(params.columnIndex(), params.rowIndex())
                      .withSize(params.width(), params.height()).getEntry();
@@ -333,7 +333,7 @@ public class Logger {
                       .execute(() -> setter.accept((Number) entryNotification.value.getValue())),
                   EntryListenerFlags.kUpdate
               );
-              setter.accept(params.defaultValueNumeric());
+              setter.accept(defaultValue);
             }
           }),
           entry(Config.ToggleButton.class, (setter, rawParams, bin, nt, name, isBoolean, defaultValue) -> {
@@ -343,7 +343,7 @@ public class Logger {
                 new WrappedShuffleboardContainer(Shuffleboard.getTab(params.tabName()));
             NetworkTableEntry entry =
                 bin.add((params.name().equals("NO_NAME")) ? name : params.name(),
-                        params.defaultValue())
+                        defaultValue)
                    .withWidget(BuiltInWidgets.kToggleButton.getWidgetName())
                    .withPosition(params.columnIndex(), params.rowIndex())
                    .withSize(params.width(), params.height()).getEntry();
@@ -353,7 +353,7 @@ public class Logger {
                     .execute(() -> setter.accept((boolean) entryNotification.value.getValue())),
                 EntryListenerFlags.kUpdate
             );
-            setter.accept(params.defaultValue());
+            setter.accept(defaultValue);
           }),
           entry(Config.ToggleSwitch.class, (setter, rawParams, bin, nt, name, isBoolean, defaultValue) -> {
             Config.ToggleSwitch params = (Config.ToggleSwitch) rawParams;
@@ -362,7 +362,7 @@ public class Logger {
                 new WrappedShuffleboardContainer(Shuffleboard.getTab(params.tabName()));
             NetworkTableEntry entry =
                 bin.add((params.name().equals("NO_NAME")) ? name : params.name(),
-                        params.defaultValue())
+                        defaultValue)
                    .withWidget(BuiltInWidgets.kToggleSwitch.getWidgetName())
                    .withPosition(params.columnIndex(), params.rowIndex())
                    .withSize(params.width(), params.height()).getEntry();
@@ -372,7 +372,7 @@ public class Logger {
                     .execute(() -> setter.accept((boolean) entryNotification.value.getValue())),
                 EntryListenerFlags.kUpdate
             );
-            setter.accept(params.defaultValue());
+            setter.accept(defaultValue);
           }),
           entry(Config.NumberSlider.class, (setter, rawParams, bin, nt, name, isBoolean, defaultValue) -> {
             Config.NumberSlider params = (Config.NumberSlider) rawParams;
@@ -381,7 +381,7 @@ public class Logger {
                 new WrappedShuffleboardContainer(Shuffleboard.getTab(params.tabName()));
             NetworkTableEntry entry =
                 bin.add((params.name().equals("NO_NAME")) ? name : params.name(),
-                        params.defaultValue())
+                        defaultValue)
                    .withWidget(BuiltInWidgets.kNumberSlider.getWidgetName())
                    .withProperties(Map.of(
                        "min", params.min(),
@@ -396,7 +396,7 @@ public class Logger {
                     .execute(() -> setter.accept((Number) entryNotification.value.getValue())),
                 EntryListenerFlags.kUpdate
             );
-            setter.accept(params.defaultValue());
+            setter.accept(defaultValue);
           })
       );
 
@@ -1459,17 +1459,33 @@ public class Logger {
     boolean included = true;
     switch (logType) {
       case LOG:
-        included = (field.getAnnotation(Log.Exclude.class) == null &&
-            field.getType().getAnnotation(Log.Exclude.class) == null) ||
-            field.getAnnotation(Log.Include.class) != null;
+        included = (!isExcludedOn(field.getAnnotation(Log.Exclude.class)) &&
+            !isExcludedOn(field.getType().getAnnotation(Log.Exclude.class))) ||
+            isIncludedOn(field.getAnnotation(Log.Include.class));
         break;
       case CONFIG:
-        included = (field.getAnnotation(Config.Exclude.class) == null &&
-            field.getType().getAnnotation(Config.Exclude.class) == null) ||
-            field.getAnnotation(Config.Include.class) != null;
+        included = (!isExcludedOn(field.getAnnotation(Config.Exclude.class)) &&
+            !isExcludedOn(field.getType().getAnnotation(Config.Exclude.class))) ||
+            isIncludedOn(field.getAnnotation(Config.Include.class));
         break;
     }
     return included;
+  }
+
+  private static boolean isExcludedOn(Log.Exclude exclude) {
+    return exclude != null && exclude.exclude();
+  }
+
+  private static boolean isExcludedOn(Config.Exclude exclude) {
+    return exclude != null && exclude.exclude();
+  }
+
+  private static boolean isIncludedOn(Log.Include include) {
+    return include != null && include.include();
+  }
+
+  private static boolean isIncludedOn(Config.Include include) {
+    return include != null && include.include();
   }
 
   /**
