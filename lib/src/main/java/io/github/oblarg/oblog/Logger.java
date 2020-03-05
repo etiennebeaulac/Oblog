@@ -1319,7 +1319,7 @@ public class Logger {
       }
       // Only proceed if loggable, included, not already logged, and does not cause a cycle
       if (!isLoggableClassOrArrayOrCollection(field, loggable)
-          || !isIncluded(field, logType)
+          || !isSubIncluded(field, logType)
           || loggedFields.contains(field)
           || isAncestor(field, loggable, ancestors)) {
         continue;
@@ -1456,6 +1456,28 @@ public class Logger {
    * @return Whether the field is included
    */
   private static boolean isIncluded(Field field, LogType logType) {
+    boolean included = true;
+    switch (logType) {
+      case LOG:
+        included = (!isExcludedOn(field.getAnnotation(Log.Exclude.class))) ||
+            isIncludedOn(field.getAnnotation(Log.Include.class));
+        break;
+      case CONFIG:
+        included = (!isExcludedOn(field.getAnnotation(Config.Exclude.class))) ||
+            isIncludedOn(field.getAnnotation(Config.Include.class));
+        break;
+    }
+    return included;
+  }
+
+  /**
+   * Checks whether the given field is included for the specified logging type
+   *
+   * @param field   The field to check
+   * @param logType The type of logging being performed
+   * @return Whether the field is included
+   */
+  private static boolean isSubIncluded(Field field, LogType logType) {
     boolean included = true;
     switch (logType) {
       case LOG:
