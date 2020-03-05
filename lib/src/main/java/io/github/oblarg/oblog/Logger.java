@@ -200,7 +200,7 @@ public class Logger {
       if (isNull(field, rootContainer)) {
         continue;
       }
-      if (isLoggableClassOrArrayOrCollection(field, rootContainer) && isIncluded(field, logType)) {
+      if (isLoggableClassOrArrayOrCollection(field, rootContainer) && isSubIncluded(field, logType)) {
         // Handle arrays elementwise...
         if (field.getType().isArray()) {
           List<Loggable> toLogs = new ArrayList<>();
